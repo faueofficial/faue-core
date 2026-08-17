@@ -1,0 +1,18 @@
+# Shared runtime for every FAUE service. Never pin these in a service.
+fastapi
+pydantic>=2
+pydantic-settings
+sqlalchemy[asyncio]>=2
+asyncpg
+alembic
+redis
+aio-pika
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-sqlalchemy
+structlog
+cryptography
+pyjwt
+httpx
+pyyaml

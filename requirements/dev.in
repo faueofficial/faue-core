@@ -1,0 +1,11 @@
+-c constraints.txt
+-r base.in
+-r web.in
+-r worker.in
+ruff
+mypy
+pytest
+pytest-asyncio
+pytest-cov
+testcontainers[postgres]
+pip-tools

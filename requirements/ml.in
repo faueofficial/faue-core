@@ -1,0 +1,8 @@
+# ase ONLY. These must never enter the gateway image.
+-c constraints.txt
+-r base.in
+pgvector
+numpy
+pillow
+open-clip-torch
+torch

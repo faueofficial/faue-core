@@ -1,0 +1,24 @@
+[project]
+name = "faue-core"
+version = "0.1.0"
+description = "Shared runtime plumbing for FAUE services"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+include = ["faue_core*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["faue_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

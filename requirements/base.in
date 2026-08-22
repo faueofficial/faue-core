@@ -1,6 +1,6 @@
 # Shared runtime for every FAUE service. Never pin these in a service.
 fastapi
-pydantic>=2
+pydantic[email]>=2   # EmailStr needs the email-validator extra
 pydantic-settings
 sqlalchemy[asyncio]>=2
 asyncpg

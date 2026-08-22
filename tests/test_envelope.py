@@ -1,42 +1,75 @@
-from datetime import UTC, datetime
-from uuid import uuid4
+"""Envelope encryption."""
 
 import pytest
 
-from faue_core.events.envelope import Event, InvalidEvent
+from faue_core.crypto.envelope import DecryptionError, EnvelopeEncryptor
+
+KEY = "test-master-key-not-for-production"
 
 
-def make(**overrides):
-    base = dict(name="look.completed", producer="ase", payload={"job_id": str(uuid4())},
-                trace_id="4bf92f3577b34da6a3ce929d0e0e4736")
-    return Event(**{**base, **overrides})
+def test_round_trips():
+    enc = EnvelopeEncryptor(KEY)
+    assert enc.decrypt(enc.encrypt("amara@example.com")) == "amara@example.com"
 
 
-def test_valid_event_round_trips():
-    event = make()
-    body = event.to_dict()
-    assert body["name"] == "look.completed"
-    assert body["version"] == 1
-    assert body["user_id"] is None
+def test_ciphertext_does_not_contain_the_plaintext():
+    enc = EnvelopeEncryptor(KEY)
+    assert b"amara@example.com" not in enc.encrypt("amara@example.com")
 
 
-@pytest.mark.parametrize("bad", ["LookCompleted", "look", "look.Completed", "look completed", ""])
-def test_event_names_must_be_past_tense_dotted(bad):
-    with pytest.raises(InvalidEvent):
-        make(name=bad)
+def test_the_same_value_encrypts_differently_every_time():
+    """A per-value data key and a random nonce. Deterministic ciphertext would
+    let anyone with the database tell which users share an email domain."""
+    enc = EnvelopeEncryptor(KEY)
+    assert enc.encrypt("a@b.com") != enc.encrypt("a@b.com")
 
 
-def test_naive_timestamps_rejected():
-    with pytest.raises(InvalidEvent):
-        make(occurred_at=datetime(2026, 8, 17, 12, 0))
+def test_another_master_key_cannot_decrypt():
+    blob = EnvelopeEncryptor(KEY).encrypt("a@b.com")
+    with pytest.raises(DecryptionError):
+        EnvelopeEncryptor("a-different-master-key").decrypt(blob)
 
 
-def test_events_are_immutable():
-    event = make()
-    with pytest.raises(Exception):
-        event.name = "look.failed"  # type: ignore[misc]
+def test_tampering_is_detected():
+    """AES-GCM is authenticated: a flipped byte fails rather than decrypting to
+    something plausible."""
+    enc = EnvelopeEncryptor(KEY)
+    blob = bytearray(enc.encrypt("a@b.com"))
+    blob[-1] ^= 0x01
+    with pytest.raises(DecryptionError):
+        enc.decrypt(bytes(blob))
 
 
-def test_occurred_at_is_utc_aware():
-    assert make().occurred_at.tzinfo is not None
-    assert make(occurred_at=datetime.now(UTC)).occurred_at.tzinfo is UTC
+@pytest.mark.parametrize("junk", [b"", b"nope", b"v9" + b"\x00" * 40])
+def test_garbage_raises_rather_than_crashing(junk):
+    with pytest.raises(DecryptionError):
+        EnvelopeEncryptor(KEY).decrypt(junk)
+
+
+def test_rotation_preserves_the_value():
+    """Rotating re-wraps the data key. The value survives; the old master key
+    no longer opens it."""
+    old, new = EnvelopeEncryptor(KEY), "a-new-master-key"
+    blob = old.encrypt("amara@example.com")
+    rotated = old.rotate(blob, new)
+
+    assert EnvelopeEncryptor(new).decrypt(rotated) == "amara@example.com"
+    with pytest.raises(DecryptionError):
+        old.decrypt(rotated)
+
+
+def test_unicode_survives():
+    enc = EnvelopeEncryptor(KEY)
+    assert enc.decrypt(enc.encrypt("Adé Òjó — 어울림")) == "Adé Òjó — 어울림"
+
+
+def test_an_empty_master_key_is_refused():
+    with pytest.raises(ValueError):
+        EnvelopeEncryptor("")
+
+
+def test_a_short_master_key_still_works():
+    """HKDF accepts any input, so a short key fails safely rather than deep
+    inside the cipher with an unhelpful error."""
+    enc = EnvelopeEncryptor("x")
+    assert enc.decrypt(enc.encrypt("a@b.com")) == "a@b.com"

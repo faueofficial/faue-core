@@ -1,0 +1,6 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  check:
+    uses: faueofficial/faue-infra/.github/workflows/python-service.yml@main

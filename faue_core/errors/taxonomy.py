@@ -59,7 +59,14 @@ class LinkAlreadyUsed(FaueError):
 
 
 class DeviceCodeRequired(FaueError):
+    """Opened on a different device. A normal flow, not a failure — the client
+    shows the code rather than an error."""
+
     problem_type, status, title = "device_code_required", 409, "Confirm on your device"
+
+    def __init__(self, detail: str | None = None, *, device_code: str) -> None:
+        super().__init__(detail)
+        self.device_code = device_code
 
 
 class DeviceCodeInvalid(FaueError):

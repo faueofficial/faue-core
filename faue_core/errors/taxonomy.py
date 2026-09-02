@@ -134,6 +134,19 @@ class RenderFailed(FaueError):
 class RateLimited(FaueError):
     problem_type, status, title = "rate_limited", 429, "Too many requests"
 
+    def __init__(
+        self,
+        detail: str | None = None,
+        *,
+        field: str | None = None,
+        retry_after: int = 60,
+    ) -> None:
+        super().__init__(detail, field=field)
+        #: Seconds until the caller may try again. The boundary puts this in
+        #: `Retry-After`; a fixed guess there is either a lie that wastes the
+        #: caller's time or one that invites a hot retry loop.
+        self.retry_after = retry_after
+
 
 class ServiceUnavailable(FaueError):
     problem_type, status, title = "service_unavailable", 503, "Temporarily unavailable"

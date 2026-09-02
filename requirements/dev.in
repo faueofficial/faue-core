@@ -9,3 +9,4 @@ pytest-asyncio
 pytest-cov
 testcontainers[postgres]
 pip-tools
+cloudinary            # not used at runtime — pins our hand-rolled request signing to theirs

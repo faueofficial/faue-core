@@ -14,5 +14,6 @@ opentelemetry-instrumentation-sqlalchemy
 structlog
 cryptography
 pyjwt
+pyotp                # RFC 6238 TOTP for admin MFA; hand-rolling HMAC crypto is a bad idea
 httpx
 pyyaml

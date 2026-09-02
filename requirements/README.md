@@ -9,6 +9,7 @@ and never pin a shared library themselves.
 | `web.in` | HTTP-serving services |
 | `worker.in` | background workers |
 | `ml.in` | **ase only** — must never enter the gateway image |
+| `media.in` | the image PII pipeline worker — **not** the gateway's web image |
 | `dev.in` | local development and CI |
 | `constraints.txt` | shared pins; every role resolves against it |
 

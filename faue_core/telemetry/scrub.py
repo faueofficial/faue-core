@@ -33,3 +33,12 @@ def scrub(value: Any, *, key: str | None = None) -> Any:
         value = EMAIL_RE.sub(REDACTED, value)
         value = PHONE_RE.sub(REDACTED, value)
     return value
+
+
+def scrub_text(text: str) -> str:
+    """Scrub a bare string — a log message, an exception message.
+
+    The key-based rules cannot see inside an f-string, and an f-string is
+    exactly how an address reaches a message body.
+    """
+    return scrub(text)

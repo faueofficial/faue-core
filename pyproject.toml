@@ -4,6 +4,72 @@ version = "0.1.0"
 description = "Shared runtime plumbing for FAUE services"
 requires-python = ">=3.12"
 
+# Declared here, not only in `requirements/`. Those files describe what a
+# *service* installs; this is what `pip install faue-core` must pull on its own.
+#
+# Without it the package installs cleanly and fails at import — which is exactly
+# what happens on a container build, where no sibling checkout has already put
+# pydantic in the environment.
+#
+# Unpinned: `requirements/constraints.txt` is where versions are decided, and
+# pinning in two places is how they disagree.
+dependencies = [
+    "pydantic>=2",
+    "pydantic-settings",
+    "sqlalchemy>=2.0",
+    "cryptography",
+    "pyotp",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+# These mirror the roles in `requirements/`, which exist for pip-compile and
+# pinning. Extras are what pip can resolve at install time, when a container
+# build has no access to those files — the two must agree, and `requirements/`
+# is the place versions are decided.
+broker = ["aio-pika"]
+
+# Everything a FAUE service needs, whatever its role.
+service = [
+    "faue-core[broker]",
+    "fastapi",
+    "asyncpg",
+    "alembic",
+    "redis",
+    "pyjwt",
+    "httpx",
+    "pyyaml",
+    "structlog",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-sqlalchemy",
+]
+
+# HTTP-serving services.
+web = [
+    "faue-core[service]",
+    "uvicorn[standard]",
+    "python-multipart",
+    "sse-starlette",
+    "jinja2",
+]
+
+# Background workers.
+worker = ["faue-core[service]", "arq"]
+
+# The image PII pipeline worker ONLY. Never the gateway's web image — these
+# carry ~500MB of models, and keeping them out is why API instances stay small.
+media = [
+    "faue-core[worker]",
+    "pillow",
+    "mediapipe",
+    "pytesseract",
+    "open-clip-torch",
+    "torch",
+    "boto3",
+]
+
 [tool.setuptools.packages.find]
 include = ["faue_core*"]
 

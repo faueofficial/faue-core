@@ -1,0 +1,16 @@
+# Image PII pipeline. WORKER ONLY — must never enter the gateway's web image.
+#
+# The gateway API signs uploads and reads asset rows; it never decodes an image.
+# Processing takes seconds and belongs in a worker regardless, which is what
+# keeps ~500MB of models out of every API instance.
+-c constraints.txt
+-r worker.in
+# NOTE: no `cloudinary` SDK. It is synchronous, and the surface used — upload,
+# destroy, a delivery URL — is small enough that wrapping every call in a thread
+# costs more than the REST API over httpx, which is already a base dependency.
+pillow                 # decode, re-encode, variants, redaction masks
+mediapipe              # face detection, in-process — see pii-handling.md
+pytesseract            # OCR; needs the tesseract system binary
+open-clip-torch        # zero-shot safety classification
+torch
+boto3                  # R2 backup replication; SigV4 is too easy to hand-roll wrong

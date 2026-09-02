@@ -27,11 +27,24 @@ dependencies = [
 # pinning. Extras are what pip can resolve at install time, when a container
 # build has no access to those files — the two must agree, and `requirements/`
 # is the place versions are decided.
+#
+# Each extra lists its full set rather than building on another. Self-reference
+# (`faue-core[service]` inside `web`) is the obvious way to write this and it
+# breaks every install from a git URL: the self-reference carries no URL, so pip
+# looks up a bare `faue-core` on PyPI and reports
+#
+#     ERROR: Could not find a version that satisfies the requirement faue-core
+#            (from versions: none)
+#
+# which reads like a missing package and is actually a self-reference that pip
+# cannot resolve back to the URL it is already installing from. Duplication here
+# is the cost of being installable from git.
+
 broker = ["aio-pika"]
 
 # Everything a FAUE service needs, whatever its role.
 service = [
-    "faue-core[broker]",
+    "aio-pika",
     "fastapi",
     "asyncpg",
     "alembic",
@@ -48,7 +61,19 @@ service = [
 
 # HTTP-serving services.
 web = [
-    "faue-core[service]",
+    "aio-pika",
+    "fastapi",
+    "asyncpg",
+    "alembic",
+    "redis",
+    "pyjwt",
+    "httpx",
+    "pyyaml",
+    "structlog",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-sqlalchemy",
     "uvicorn[standard]",
     "python-multipart",
     "sse-starlette",
@@ -56,12 +81,40 @@ web = [
 ]
 
 # Background workers.
-worker = ["faue-core[service]", "arq"]
+worker = [
+    "aio-pika",
+    "fastapi",
+    "asyncpg",
+    "alembic",
+    "redis",
+    "pyjwt",
+    "httpx",
+    "pyyaml",
+    "structlog",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-sqlalchemy",
+    "arq",
+]
 
 # The image PII pipeline worker ONLY. Never the gateway's web image — these
 # carry ~500MB of models, and keeping them out is why API instances stay small.
 media = [
-    "faue-core[worker]",
+    "aio-pika",
+    "fastapi",
+    "asyncpg",
+    "alembic",
+    "redis",
+    "pyjwt",
+    "httpx",
+    "pyyaml",
+    "structlog",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-sqlalchemy",
+    "arq",
     "pillow",
     "mediapipe",
     "pytesseract",

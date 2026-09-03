@@ -14,106 +14,71 @@ requires-python = ">=3.12"
 # Unpinned: `requirements/constraints.txt` is where versions are decided, and
 # pinning in two places is how they disagree.
 dependencies = [
-    "pydantic>=2",
+    # Declared here, not only in `requirements/`. Those files describe what a
+    # *service* installs; this is what `pip install faue-core` must pull on its
+    # own. Without it the package installs cleanly and fails at import — which
+    # is what happens on a container build, where no sibling checkout has
+    # already put pydantic in the environment.
+    #
+    # Unpinned: `requirements/constraints.txt` decides versions, and pinning in
+    # two places is how they disagree.
+
+    # --- what faue_core itself imports ---
+    # `[email]` is load-bearing: EmailStr raises ImportError at model definition
+    # without email-validator, so a service fails to start rather than degrade.
+    "pydantic[email]>=2",
     "pydantic-settings",
     "sqlalchemy>=2.0",
     "cryptography",
     "pyotp",
     "python-dotenv",
-]
 
-[project.optional-dependencies]
-# These mirror the roles in `requirements/`, which exist for pip-compile and
-# pinning. Extras are what pip can resolve at install time, when a container
-# build has no access to those files — the two must agree, and `requirements/`
-# is the place versions are decided.
-#
-# Each extra lists its full set rather than building on another. Self-reference
-# (`faue-core[service]` inside `web`) is the obvious way to write this and it
-# breaks every install from a git URL: the self-reference carries no URL, so pip
-# looks up a bare `faue-core` on PyPI and reports
-#
-#     ERROR: Could not find a version that satisfies the requirement faue-core
-#            (from versions: none)
-#
-# which reads like a missing package and is actually a self-reference that pip
-# cannot resolve back to the URL it is already installing from. Duplication here
-# is the cost of being installable from git.
-
-broker = ["aio-pika"]
-
-# Everything a FAUE service needs, whatever its role.
-service = [
-    "aio-pika",
+    # --- the serving baseline, deliberately NOT an extra ---
+    #
+    # These were in a `web` extra. Every service then had to remember
+    # `faue-core[web]`, and forgetting it produced `bash: uvicorn: command not
+    # found` at container start — an error that says nothing about a missing
+    # extra and cost a deployment to diagnose.
+    #
+    # They total a few tens of megabytes. The extra that genuinely matters for
+    # image size is `media` (~2GB of models), and that one is still opt-in.
+    # Splitting these bought nothing and cost a class of silent failure.
     "fastapi",
-    "asyncpg",
-    "alembic",
-    "redis",
-    "pyjwt",
-    "httpx",
-    "pyyaml",
-    "structlog",
-    "opentelemetry-api",
-    "opentelemetry-sdk",
-    "opentelemetry-instrumentation-fastapi",
-    "opentelemetry-instrumentation-sqlalchemy",
-]
-
-# HTTP-serving services.
-web = [
-    "aio-pika",
-    "fastapi",
-    "asyncpg",
-    "alembic",
-    "redis",
-    "pyjwt",
-    "httpx",
-    "pyyaml",
-    "structlog",
-    "opentelemetry-api",
-    "opentelemetry-sdk",
-    "opentelemetry-instrumentation-fastapi",
-    "opentelemetry-instrumentation-sqlalchemy",
     "uvicorn[standard]",
+    "asyncpg",
+    "alembic",
+    "redis",
+    "pyjwt",
+    "httpx",
+    "pyyaml",
+    "structlog",
     "python-multipart",
     "sse-starlette",
     "jinja2",
-]
-
-# Background workers.
-worker = [
     "aio-pika",
-    "fastapi",
-    "asyncpg",
-    "alembic",
-    "redis",
-    "pyjwt",
-    "httpx",
-    "pyyaml",
-    "structlog",
     "opentelemetry-api",
     "opentelemetry-sdk",
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-sqlalchemy",
-    "arq",
 ]
 
-# The image PII pipeline worker ONLY. Never the gateway's web image — these
-# carry ~500MB of models, and keeping them out is why API instances stay small.
+[project.optional-dependencies]
+# Only one extra now, and it is the one that earns its keep: the image PII
+# pipeline carries roughly 2GB of models, and keeping that out of every API
+# instance is a real saving rather than tidiness.
+#
+# The previous `service` / `web` / `worker` extras were removed. They saved tens
+# of megabytes and cost a deployment, because forgetting one produced a missing
+# binary rather than a missing package.
+#
+# Kept as aliases so an existing `faue-core[web]` pin still resolves rather than
+# failing on an unknown extra.
+web = []
+service = []
+worker = ["arq"]
+broker = []
+
 media = [
-    "aio-pika",
-    "fastapi",
-    "asyncpg",
-    "alembic",
-    "redis",
-    "pyjwt",
-    "httpx",
-    "pyyaml",
-    "structlog",
-    "opentelemetry-api",
-    "opentelemetry-sdk",
-    "opentelemetry-instrumentation-fastapi",
-    "opentelemetry-instrumentation-sqlalchemy",
     "arq",
     "pillow",
     "mediapipe",
